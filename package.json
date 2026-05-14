@@ -1,28 +1,30 @@
 {
-  "name": "homebridge-tuya",
+  "name": "@ruicout0/homebridge-tuya",
 
-  "version": "3.1.1",
+  "version": "4.0.0",
 
-  "description": "🏠 Offical Homebridge plugin for TuyAPI ",
+  "type": "module",
+
+  "description": "🏠 Homebridge plugin for TuyAPI (Homebridge 2.0 compatible fork)",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "bin": {
-    "tuya-lan": "./bin/cli.js",
-    "tuya-lan-find": "./bin/cli-find.js",
-    "tuya-lan-decode": "./bin/cli-decode.js"
+    "tuya-lan": "./bin/cli.cjs",
+    "tuya-lan-find": "./bin/cli-find.cjs",
+    "tuya-lan-decode": "./bin/cli-decode.cjs"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/iRayanKhan/homebridge-tuya.git"
+    "url": "git+https://github.com/ruicout0/homebridge-tuya.git"
   },
-  "author": "Rayan Khan",
+  "author": "Rui Couto",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/iRayanKhan/homebridge-tuya/issues"
+    "url": "https://github.com/ruicout0/homebridge-tuya/issues"
   },
-  "homepage": "https://github.com/iRayanKhan/homebridge-tuya#readme",
+  "homepage": "https://github.com/ruicout0/homebridge-tuya#readme",
   "dependencies": {
     "async": "^3.2.2",
     "commander": "^3.0.1",
@@ -39,7 +41,7 @@
     "tuya"
   ],
   "engines": {
-    "homebridge": ">=0.4.0",
-    "node": ">=8.6.0"
+    "homebridge": ">=2.0.0",
+    "node": ">=22.0.0"
   }
 }

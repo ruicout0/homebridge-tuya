@@ -1,27 +1,28 @@
-const TuyaAccessory = require('./lib/TuyaAccessory');
-const TuyaDiscovery = require('./lib/TuyaDiscovery');
+import TuyaAccessory from './lib/TuyaAccessory.js';
+import TuyaDiscovery from './lib/TuyaDiscovery.js';
 
-const OutletAccessory = require('./lib/OutletAccessory');
-const SimpleLightAccessory = require('./lib/SimpleLightAccessory');
-const MultiOutletAccessory = require('./lib/MultiOutletAccessory');
-const CustomMultiOutletAccessory = require('./lib/CustomMultiOutletAccessory');
-const RGBTWLightAccessory = require('./lib/RGBTWLightAccessory');
-const RGBTWOutletAccessory = require('./lib/RGBTWOutletAccessory');
-const TWLightAccessory = require('./lib/TWLightAccessory');
-const AirConditionerAccessory = require('./lib/AirConditionerAccessory');
-const AirPurifierAccessory = require('./lib/AirPurifierAccessory');
-const DehumidifierAccessory = require('./lib/DehumidifierAccessory');
-const ConvectorAccessory = require('./lib/ConvectorAccessory');
-const GarageDoorAccessory = require('./lib/GarageDoorAccessory');
-const SimpleDimmerAccessory = require('./lib/SimpleDimmerAccessory');
-const SimpleDimmer2Accessory = require('./lib/SimpleDimmer2Accessory');
-const SimpleBlindsAccessory = require('./lib/SimpleBlindsAccessory');
-const SimpleHeaterAccessory = require('./lib/SimpleHeaterAccessory');
-const SimpleFanAccessory = require('./lib/SimpleFanAccessory');
-const SimpleFanLightAccessory = require('./lib/SimpleFanLightAccessory');
-const SwitchAccessory = require('./lib/SwitchAccessory');
-const ValveAccessory = require('./lib/ValveAccessory');
-const OilDiffuserAccessory = require('./lib/OilDiffuserAccessory');
+import OutletAccessory from './lib/OutletAccessory.js';
+import SimpleLightAccessory from './lib/SimpleLightAccessory.js';
+import MultiOutletAccessory from './lib/MultiOutletAccessory.js';
+import CustomMultiOutletAccessory from './lib/CustomMultiOutletAccessory.js';
+import RGBTWLightAccessory from './lib/RGBTWLightAccessory.js';
+import RGBTWOutletAccessory from './lib/RGBTWOutletAccessory.js';
+import TWLightAccessory from './lib/TWLightAccessory.js';
+import AirConditionerAccessory from './lib/AirConditionerAccessory.js';
+import AirPurifierAccessory from './lib/AirPurifierAccessory.js';
+import DehumidifierAccessory from './lib/DehumidifierAccessory.js';
+import ConvectorAccessory from './lib/ConvectorAccessory.js';
+import GarageDoorAccessory from './lib/GarageDoorAccessory.js';
+import SimpleDimmerAccessory from './lib/SimpleDimmerAccessory.js';
+import SimpleDimmer2Accessory from './lib/SimpleDimmer2Accessory.js';
+import SimpleBlindsAccessory from './lib/SimpleBlindsAccessory.js';
+import SimpleHeaterAccessory from './lib/SimpleHeaterAccessory.js';
+import SimpleFanAccessory from './lib/SimpleFanAccessory.js';
+import SimpleFanLightAccessory from './lib/SimpleFanLightAccessory.js';
+import SwitchAccessory from './lib/SwitchAccessory.js';
+import ValveAccessory from './lib/ValveAccessory.js';
+import OilDiffuserAccessory from './lib/OilDiffuserAccessory.js';
+import createEnergyCharacteristics from './lib/EnergyCharacteristics.js';
 
 const PLUGIN_NAME = 'homebridge-tuya';
 const PLATFORM_NAME = 'TuyaLan';
@@ -52,21 +53,21 @@ const CLASS_DEF = {
 
 let Characteristic, PlatformAccessory, Service, Categories, AdaptiveLightingController, UUID;
 
-module.exports = function(homebridge) {
+export default function(homebridge) {
     ({
         platformAccessory: PlatformAccessory,
         hap: {Characteristic, Service, AdaptiveLightingController, Accessory: {Categories}, uuid: UUID}
     } = homebridge);
 
     homebridge.registerPlatform(PLUGIN_NAME, PLATFORM_NAME, TuyaLan, true);
-};
+}
 
 class TuyaLan {
     constructor(...props) {
         [this.log, this.config, this.api] = [...props];
 
         this.cachedAccessories = new Map();
-        this.api.hap.EnergyCharacteristics = require('./lib/EnergyCharacteristics')(this.api.hap.Characteristic);
+        this.api.hap.EnergyCharacteristics = createEnergyCharacteristics(this.api.hap.Characteristic);
 
         if(!this.config || !this.config.devices) {
             this.log("No devices found. Check that you have specified them in your config.json file.");
@@ -160,7 +161,6 @@ class TuyaLan {
     }
 
     configureAccessory(accessory) {
-        // also checks null objects or empty config - this._expectedUUIDs
         if (accessory instanceof PlatformAccessory && this._expectedUUIDs && this._expectedUUIDs.includes(accessory.UUID)) {
             this.cachedAccessories.set(accessory.UUID, accessory);
             accessory.services.forEach(service => {
@@ -179,11 +179,6 @@ class TuyaLan {
                 });
             });
         } else {
-            /*
-             * Irrespective of this unregistering, Homebridge continues
-             * to "_prepareAssociatedHAPAccessory" and "addBridgedAccessory".
-             * This timeout will hopefully remove the accessory after that has happened.
-             */
             setTimeout(() => {
                 this.removeAccessory(accessory);
             }, 1000);
