@@ -66,8 +66,16 @@ class TuyaLan {
     constructor(...props) {
         [this.log, this.config, this.api] = [...props];
 
+        // Store HAP references from API (reliable in Homebridge 2.0)
+        const {Characteristic: C, Service: S, Accessory: {Categories: Cat}, uuid: U} = this.api.hap;
+        Characteristic = C;
+        Service = S;
+        Categories = Cat;
+        UUID = U;
+        PlatformAccessory = this.api.platformAccessory;
+
         this.cachedAccessories = new Map();
-        this.api.hap.EnergyCharacteristics = createEnergyCharacteristics(this.api.hap.Characteristic);
+        this.api.hap.EnergyCharacteristics = createEnergyCharacteristics(Characteristic);
 
         if(!this.config || !this.config.devices) {
             this.log("No devices found. Check that you have specified them in your config.json file.");
@@ -161,15 +169,17 @@ class TuyaLan {
     }
 
     configureAccessory(accessory) {
-        if (accessory instanceof PlatformAccessory && this._expectedUUIDs && this._expectedUUIDs.includes(accessory.UUID)) {
+        const {Characteristic: Char, Service: Svc} = this.api.hap;
+        const PA = this.api.platformAccessory;
+        if (accessory instanceof PA && this._expectedUUIDs && this._expectedUUIDs.includes(accessory.UUID)) {
             this.cachedAccessories.set(accessory.UUID, accessory);
             accessory.services.forEach(service => {
-                if (service.UUID === Service.AccessoryInformation.UUID) return;
+                if (service.UUID === Svc.AccessoryInformation.UUID) return;
                 service.characteristics.some(characteristic => {
                     if (!characteristic.props ||
                         !Array.isArray(characteristic.props.perms) ||
                         characteristic.props.perms.length !== 3 ||
-                        !(characteristic.props.perms.includes(Characteristic.Perms.WRITE) && characteristic.props.perms.includes(Characteristic.Perms.NOTIFY))
+                        !(characteristic.props.perms.includes(Char.Perms.WRITE) && characteristic.props.perms.includes(Char.Perms.NOTIFY))
                     ) return;
 
                     this.log.info('Marked %s unreachable by faulting Service.%s.%s', accessory.displayName, service.displayName, characteristic.displayName);
