@@ -75,7 +75,7 @@ class TuyaLan {
         PlatformAccessory = this.api.platformAccessory;
 
         this.cachedAccessories = new Map();
-        this.api.hap.EnergyCharacteristics = createEnergyCharacteristics(Characteristic);
+        this.api.hap.EnergyCharacteristics = createEnergyCharacteristics(this.api.hap);
 
         if(!this.config || !this.config.devices) {
             this.log("No devices found. Check that you have specified them in your config.json file.");
@@ -179,7 +179,7 @@ class TuyaLan {
                     if (!characteristic.props ||
                         !Array.isArray(characteristic.props.perms) ||
                         characteristic.props.perms.length !== 3 ||
-                        !(characteristic.props.perms.includes(Char.Perms.WRITE) && characteristic.props.perms.includes(Char.Perms.NOTIFY))
+                        !(characteristic.props.perms.includes(Char.Perms.PAIRED_WRITE) && characteristic.props.perms.includes(Char.Perms.NOTIFY))
                     ) return;
 
                     this.log.info('Marked %s unreachable by faulting Service.%s.%s', accessory.displayName, service.displayName, characteristic.displayName);
