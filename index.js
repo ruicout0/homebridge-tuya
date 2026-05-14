@@ -74,9 +74,15 @@ class TuyaLan {
         UUID = U;
         PlatformAccessory = this.api.platformAccessory;
 
-        // Create extended hap object (ESM modules are frozen, can't mutate api.hap directly)
+        // Create extended hap proxy (ESM modules are frozen, can't mutate api.hap directly)
         const EnergyCharacteristics = createEnergyCharacteristics(this.api.hap);
-        this.api.hap = Object.assign(Object.create(this.api.hap), this.api.hap, {EnergyCharacteristics});
+        const originalHap = this.api.hap;
+        this.api.hap = new Proxy(originalHap, {
+            get(target, prop) {
+                if (prop === 'EnergyCharacteristics') return EnergyCharacteristics;
+                return target[prop];
+            }
+        });
 
         this.cachedAccessories = new Map();
 
