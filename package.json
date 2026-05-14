@@ -1,10 +1,7 @@
 {
   "name": "@ruicout0/homebridge-tuya",
-
   "version": "4.0.0",
-
   "type": "module",
-
   "description": "🏠 Homebridge plugin for TuyAPI (Homebridge 2.0 compatible fork)",
   "main": "index.js",
   "scripts": {
@@ -43,5 +40,8 @@
   "engines": {
     "homebridge": ">=2.0.0",
     "node": ">=22.0.0"
+  },
+  "devDependencies": {
+    "homebridge": "^2.0.2"
   }
 }

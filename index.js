@@ -56,7 +56,7 @@ let Characteristic, PlatformAccessory, Service, Categories, AdaptiveLightingCont
 export default function(homebridge) {
     ({
         platformAccessory: PlatformAccessory,
-        hap: {Characteristic, Service, AdaptiveLightingController, Accessory: {Categories}, uuid: UUID}
+        hap: {Characteristic, Service, AdaptiveLightingController, Categories, uuid: UUID}
     } = homebridge);
 
     homebridge.registerPlatform(PLUGIN_NAME, PLATFORM_NAME, TuyaLan, true);
@@ -67,15 +67,18 @@ class TuyaLan {
         [this.log, this.config, this.api] = [...props];
 
         // Store HAP references from API (reliable in Homebridge 2.0)
-        const {Characteristic: C, Service: S, Accessory: {Categories: Cat}, uuid: U} = this.api.hap;
+        const {Characteristic: C, Service: S, Categories: Cat, uuid: U} = this.api.hap;
         Characteristic = C;
         Service = S;
         Categories = Cat;
         UUID = U;
         PlatformAccessory = this.api.platformAccessory;
 
+        // Create extended hap object (ESM modules are frozen, can't mutate api.hap directly)
+        const EnergyCharacteristics = createEnergyCharacteristics(this.api.hap);
+        this.api.hap = Object.assign(Object.create(this.api.hap), this.api.hap, {EnergyCharacteristics});
+
         this.cachedAccessories = new Map();
-        this.api.hap.EnergyCharacteristics = createEnergyCharacteristics(this.api.hap);
 
         if(!this.config || !this.config.devices) {
             this.log("No devices found. Check that you have specified them in your config.json file.");
@@ -169,7 +172,7 @@ class TuyaLan {
     }
 
     configureAccessory(accessory) {
-        const {Characteristic: Char, Service: Svc} = this.api.hap;
+        const {Service: Svc, Perms} = this.api.hap;
         const PA = this.api.platformAccessory;
         if (accessory instanceof PA && this._expectedUUIDs && this._expectedUUIDs.includes(accessory.UUID)) {
             this.cachedAccessories.set(accessory.UUID, accessory);
@@ -179,7 +182,7 @@ class TuyaLan {
                     if (!characteristic.props ||
                         !Array.isArray(characteristic.props.perms) ||
                         characteristic.props.perms.length !== 3 ||
-                        !(characteristic.props.perms.includes(Char.Perms.PAIRED_WRITE) && characteristic.props.perms.includes(Char.Perms.NOTIFY))
+                        !(characteristic.props.perms.includes(Perms.PAIRED_WRITE) && characteristic.props.perms.includes(Perms.NOTIFY))
                     ) return;
 
                     this.log.info('Marked %s unreachable by faulting Service.%s.%s', accessory.displayName, service.displayName, characteristic.displayName);
