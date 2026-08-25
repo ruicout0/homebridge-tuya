@@ -10,16 +10,18 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish:
+  release-and-publish:
     runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip ci]') && !startsWith(github.event.head_commit.message, 'chore(release):')"
     permissions:
-      contents: write   # Required for creating git tags and GitHub Releases
+      contents: write   # Required for pushing version bump, git tags, and GitHub Releases
       id-token: write   # Required for npm OIDC Trusted Publishing & Provenance
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -27,36 +29,55 @@ jobs:
           node-version: 20
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Check if version is already published
-        id: check_version
+      - name: Determine Semantic Version Bump
+        id: bump_type
         run: |
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
-          PKG_NAME=$(node -p "require('./package.json').name")
-          echo "Package: $PKG_NAME @ $CURRENT_VERSION"
-          echo "package_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          COMMIT_MSG="${{ github.event.head_commit.message }}"
+          echo "Last commit message: $COMMIT_MSG"
           
-          if npm view "$PKG_NAME@$CURRENT_VERSION" version --silent > /dev/null 2>&1; then
-            echo "Version $CURRENT_VERSION is already published to npm. Skipping publish."
-            echo "should_publish=false" >> $GITHUB_OUTPUT
+          if echo "$COMMIT_MSG" | grep -qE "BREAKING CHANGE|breaking:|feat(\([^\)]+\))?!:"; then
+            BUMP="major"
+          elif echo "$COMMIT_MSG" | grep -qE "^feat(\([^\)]+\))?:"; then
+            BUMP="minor"
           else
-            echo "Version $CURRENT_VERSION is not on npm yet. Proceeding with publish."
-            echo "should_publish=true" >> $GITHUB_OUTPUT
+            BUMP="patch"
           fi
+          
+          echo "Selected bump type: $BUMP"
+          echo "bump=$BUMP" >> $GITHUB_OUTPUT
+
+      - name: Bump Version in package.json
+        id: versioning
+        run: |
+          # Bump version without creating git tag yet
+          NEW_VERSION=$(npm version ${{ steps.bump_type.outputs.bump }} --no-git-tag-version)
+          # Clean version string (remove 'v' prefix)
+          VERSION_NUM="${NEW_VERSION#v}"
+          echo "New version: $VERSION_NUM"
+          echo "version=$VERSION_NUM" >> $GITHUB_OUTPUT
 
       - name: Install dependencies
-        if: steps.check_version.outputs.should_publish == 'true'
         run: npm ci || npm install
 
       - name: Publish to npm (Trusted Publishing OIDC)
-        if: steps.check_version.outputs.should_publish == 'true'
         run: npm publish --access public --provenance
 
+      - name: Commit and Push Version Bump
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add package.json package-lock.json
+          git commit -m "chore(release): v${{ steps.versioning.outputs.version }} [skip ci]"
+          git tag "v${{ steps.versioning.outputs.version }}"
+          
+          git push origin main --tags
+
       - name: Create GitHub Release
-        if: steps.check_version.outputs.should_publish == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.check_version.outputs.package_version }}
-          name: v${{ steps.check_version.outputs.package_version }}
+          tag_name: v${{ steps.versioning.outputs.version }}
+          name: v${{ steps.versioning.outputs.version }}
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
