@@ -1,0 +1,83 @@
+name: Publish to npm
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-and-publish:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip ci]') && !startsWith(github.event.head_commit.message, 'chore(release):')"
+    permissions:
+      contents: write   # Required for pushing version bump, git tags, and GitHub Releases
+      id-token: write   # Required for npm OIDC Trusted Publishing & Provenance
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Determine Semantic Version Bump
+        id: bump_type
+        run: |
+          COMMIT_MSG="${{ github.event.head_commit.message }}"
+          echo "Last commit message: $COMMIT_MSG"
+          
+          if echo "$COMMIT_MSG" | grep -qE "BREAKING CHANGE|breaking:|feat(\([^\)]+\))?!:"; then
+            BUMP="major"
+          elif echo "$COMMIT_MSG" | grep -qE "^feat(\([^\)]+\))?:"; then
+            BUMP="minor"
+          else
+            BUMP="patch"
+          fi
+          
+          echo "Selected bump type: $BUMP"
+          echo "bump=$BUMP" >> $GITHUB_OUTPUT
+
+      - name: Bump Version in package.json
+        id: versioning
+        run: |
+          # Bump version without creating git tag yet
+          NEW_VERSION=$(npm version ${{ steps.bump_type.outputs.bump }} --no-git-tag-version)
+          # Clean version string (remove 'v' prefix)
+          VERSION_NUM="${NEW_VERSION#v}"
+          echo "New version: $VERSION_NUM"
+          echo "version=$VERSION_NUM" >> $GITHUB_OUTPUT
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Publish to npm (Trusted Publishing OIDC)
+        run: npm publish --access public --provenance
+
+      - name: Commit and Push Version Bump
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add package.json package-lock.json
+          git commit -m "chore(release): v${{ steps.versioning.outputs.version }} [skip ci]"
+          git tag "v${{ steps.versioning.outputs.version }}"
+          
+          git push origin main --tags
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.versioning.outputs.version }}
+          name: v${{ steps.versioning.outputs.version }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
