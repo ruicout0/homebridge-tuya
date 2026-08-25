@@ -27,7 +27,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          registry-url: 'https://registry.npmjs.org'
 
       - name: Determine Semantic Version Bump
         id: bump_type
@@ -49,9 +48,7 @@ jobs:
       - name: Bump Version in package.json
         id: versioning
         run: |
-          # Bump version without creating git tag yet
           NEW_VERSION=$(npm version ${{ steps.bump_type.outputs.bump }} --no-git-tag-version)
-          # Clean version string (remove 'v' prefix)
           VERSION_NUM="${NEW_VERSION#v}"
           echo "New version: $VERSION_NUM"
           echo "version=$VERSION_NUM" >> $GITHUB_OUTPUT
