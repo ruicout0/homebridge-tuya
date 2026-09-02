@@ -127,6 +127,7 @@ class TuyaLan {
             .on('discover', config => {
                 if (!config || !config.id) return;
                 if (!devices[config.id]) return this.log.warn('Discovered a device that has not been configured yet (%s@%s).', config.id, config.ip);
+                if (connectedDevices.includes(config.id)) return;
 
                 connectedDevices.push(config.id);
 
@@ -156,6 +157,7 @@ class TuyaLan {
                 if (connectedDevices.includes(deviceId)) return;
 
                 if (devices[deviceId].ip) {
+                    connectedDevices.push(deviceId);
 
                     this.log.info('Failed to discover %s (%s) in time but will connect via %s.', devices[deviceId].name, deviceId, devices[deviceId].ip);
 
@@ -178,7 +180,8 @@ class TuyaLan {
     }
 
     configureAccessory(accessory) {
-        const {Service: Svc, Perms} = this.api.hap;
+        const Svc = this.api.hap.Service;
+        const Perms = this.api.hap.Characteristic?.Perms || this.api.hap.Perms;
         const PA = this.api.platformAccessory;
         if (accessory instanceof PA && this._expectedUUIDs && this._expectedUUIDs.includes(accessory.UUID)) {
             this.cachedAccessories.set(accessory.UUID, accessory);
@@ -244,8 +247,8 @@ class TuyaLan {
 
         this.log.warn('Unregistering', homebridgeAccessory.displayName);
 
-        delete this.cachedAccessories[homebridgeAccessory.UUID];
-        this.api.unregisterPlatformAccessories(PLATFORM_NAME, PLATFORM_NAME, [homebridgeAccessory]);
+        this.cachedAccessories.delete(homebridgeAccessory.UUID);
+        this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [homebridgeAccessory]);
     }
 
     removeAccessoryByUUID(uuid) {
